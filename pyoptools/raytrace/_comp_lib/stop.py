@@ -19,7 +19,7 @@ Definition of stop components
 from numpy import sqrt, pi, absolute
 
 from pyoptools.raytrace.component import Component
-from pyoptools.raytrace.surface import Aperture
+from pyoptools.raytrace.surface import OpticalStop
 from pyoptools.raytrace.shape import Shape
 
 
@@ -60,7 +60,7 @@ class Stop(Component):
         Component.__init__(self, **traits)
         # self.shape=shape
         # self.ap_shape=ap_shape
-        face = Aperture(shape=shape, ap_shape=ap_shape)
+        face = OpticalStop(shape=shape, ap_shape=ap_shape)
         self.surflist["S1"] = (face, (0, 0, 0), (0, 0, 0))
 
     # ~ def __reduce__(self):

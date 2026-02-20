@@ -41,10 +41,12 @@ cdef class Surface(Picklable):
 
     # Cython method to calculate the surface intersection with a ray
     # To be used by pyoptools Cython functions and methods
-    # TODO: Check what needs to be done for this method to be nogil
     cdef void intersection_cy(self,
                               Ray incident_ray,
-                              Vector3d& intersection_point)  # noexcept nogil
+                              Vector3d& intersection_point) noexcept nogil
+    cdef void intersection_bidirectional_cy(self,
+                                            Ray incident_ray,
+                                            Vector3d& intersection_point) noexcept nogil
 
     # Cython method to calculate the normal at a given intersection point
     # To be used by pyoptools Cython functions and methods

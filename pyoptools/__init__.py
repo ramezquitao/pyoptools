@@ -32,3 +32,15 @@
 Package containing modules and submodules defining an *API* for optical
 raytracing and wave propagation calculations.
 """
+
+try:
+    from importlib.metadata import version, PackageNotFoundError
+except ImportError:
+    # Python < 3.8
+    from importlib_metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("pyoptools")
+except PackageNotFoundError:
+    # Package is not installed
+    __version__ = "unknown"

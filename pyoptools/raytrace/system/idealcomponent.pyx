@@ -216,7 +216,7 @@ class IdealThickLens(System):
         assign_tuple_to_vector3d(P, p_cy)
         assign_tuple_to_vector3d(D, d_cy)
         R = ri.ch_coord_sys_f(p_cy, d_cy)
-        PI = C["S0"][0].intersection(R)
+        PI = C["S0"][0].intersection(R, True)
 
         # Generate the ray from E1 to H1
         direction = R.direction if E1[1][2] < H1[1][2] else -R.direction
@@ -236,7 +236,7 @@ class IdealThickLens(System):
         assign_tuple_to_vector3d(P, p_cy)
         assign_tuple_to_vector3d(D, d_cy)
         R = R_E1.ch_coord_sys_f(p_cy, d_cy)
-        PI = C["S0"][0].intersection(R)
+        PI = C["S0"][0].intersection(R, True)
 
         # Create the ray between H1 and H2
         direction = (0, 0, 1) if H1[1][2] < H2[1][2] else (0, 0, -1)
@@ -250,7 +250,7 @@ class IdealThickLens(System):
         assign_tuple_to_vector3d(D, d_cy)
 
         R = R_H1.ch_coord_sys_f(p_cy, d_cy)
-        PI = C["S0"][0].intersection(R)
+        PI = C["S0"][0].intersection(R, True)
 
         # Calculate the refraction at H2
         _rx, _ry, rz = ri.direction
@@ -273,7 +273,7 @@ class IdealThickLens(System):
         assign_tuple_to_vector3d(P, p_cy)
         assign_tuple_to_vector3d(D, d_cy)
         R = R_H2.ch_coord_sys_f(p_cy, d_cy)
-        PI = C["S0"][0].intersection(R)
+        PI = C["S0"][0].intersection(R, True)
 
         # Check the exit aperture
         PE2 = not isnan(PI[0])
@@ -282,7 +282,7 @@ class IdealThickLens(System):
         if P2:
             C0, _P0, _D0 = P2
             R = R_H2.ch_coord_sys_f(p_cy, d_cy)
-            PII = C0["S0"][0].intersection(R)
+            PII = C0["S0"][0].intersection(R, True)
             ST2 = not (isnan(PII[0]) or isnan(PII[1]) or isnan(PII[2]))
         else:  # No exit pupil check
             ST2 = True
@@ -330,7 +330,8 @@ class IdealThickLens(System):
         min_pi = None
         min_surf = None
 
-        for comp in [self.complist["E1"], self.complist["E2"]]:
+        for reference in ["E1", "E2"]:
+            comp = self.complist[reference]
             C, P, D = comp
             # Reorient the ray to the coordinate system of the element
             # and calculate the ray's path until it intersects with the element
@@ -343,5 +344,4 @@ class IdealThickLens(System):
                 min_dist = Dist[0]
                 min_pi = Dist[1]
                 min_surf = Dist[2]
-
         return min_dist, min_pi, min_surf

@@ -5,7 +5,7 @@ Definition of a radially-symmetric aspheric lens.
 from math import pi
 
 from pyoptools.raytrace.component import Component
-from pyoptools.raytrace.surface import Aspherical, Cylinder, Plane, Aperture
+from pyoptools.raytrace.surface import Aspherical, Cylinder, Plane, OpticalStop
 from pyoptools.raytrace.shape import Circular
 from pyoptools.misc.function_2d.poly_r.poly_r import PolyR
 
@@ -89,7 +89,7 @@ class AsphericLens(Component):
         },
         s2=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         Component.__init__(self, *args, **kwargs)
 
@@ -147,7 +147,9 @@ class AsphericLens(Component):
                 poly=PolyR(s2_defn.polycoefficents),
             )
             if s2_defn.max_thickness is None:
-                s2_defn.max_thickness = s2_surf.get_z_at_point(s2_defn.diameter / 2.0, 0)
+                s2_defn.max_thickness = s2_surf.get_z_at_point(
+                    s2_defn.diameter / 2.0, 0
+                )
             side_thickness -= s2_defn.max_thickness
         self.surflist.append((s2_surf, (0, 0, thickness), (0, pi, pi / 2)))
 
@@ -182,7 +184,7 @@ class AsphericLens(Component):
         """
 
         if self.outer_diameter > defn.diameter:
-            brim = Aperture(
+            brim = OpticalStop(
                 shape=Circular(radius=0.5 * self.outer_diameter),
                 ap_shape=Circular(radius=0.5 * defn.diameter),
             )

@@ -1,15 +1,13 @@
-
 """
 Modulo con clases y funciones auxiliares.
 """
-
 
 from pyoptools.raytrace.surface.idealsurface import IdealSurface
 from pyoptools.raytrace.surface.idealpplanes import IdealPPlanes
 
 from pyoptools.raytrace.shape import Rectangular
 from pyoptools.raytrace.component import Component
-from pyoptools.raytrace.surface.aperture import Aperture
+from pyoptools.raytrace.surface.opticalstop import OpticalStop
 from pyoptools.raytrace.system.system import System
 
 
@@ -29,8 +27,8 @@ def IdealTLens(
 ):
     """Function to define an ideal thick lens."""
     S1 = IdealPPlanes(shape=shape, f=f, d=d)
-    S2 = Aperture(shape=Rectangular(size=(50, 50)), ap_shape=ap_shape)
-    S3 = Aperture(shape=Rectangular(size=(50, 50)), ap_shape=ap_shape)
+    S2 = OpticalStop(shape=Rectangular(size=(50, 50)), ap_shape=ap_shape)
+    S3 = OpticalStop(shape=Rectangular(size=(50, 50)), ap_shape=ap_shape)
     A1 = Component(
         surflist=[
             (S2, (0, 0, 0), (0, 0, 0)),

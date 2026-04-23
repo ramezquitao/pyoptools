@@ -352,7 +352,6 @@ cdef class Surface(Picklable):
     cdef void _calculate_intersection(self,
                                       Ray incident_ray,
                                       Vector3d& intersection_point) noexcept nogil:
-
         """
         Calculate the point of intersection between a ray and a surface.
 
@@ -389,20 +388,22 @@ cdef class Surface(Picklable):
                                       " be overloaded in the subclass " +
                                       self.__class__.__name__)
 
-    cdef inline void intersection_cy(self, Ray incident_ray,
-                                     Vector3d& intersection_point):
+    cdef inline void intersection_bidirectional_cy(self, Ray incident_ray,
+                                                   Vector3d& intersection_point
+                                                   ) noexcept nogil:
         """
-        Compute the intersection point of a ray with the surface.
+        Compute the intersection point of a ray with the surface without direction
+        checks.
 
-        This method calculates the intersection point of the given incident ray
-        with the surface and stores the result in the provided
-        `intersection_point` vector. It performs multiple validation checks:
-        1. Whether the ray intersects within the defined boundary of the surface
-        2. Whether the intersection occurs in front of the ray origin (forward
-           propagation)
+        This method computes ray-surface intersections without enforcing any direction
+        constraints, allowing intersections both in front of and behind the ray origin.
+        This is useful for bidirectional ray tracing applications.
 
-        If any validation fails, the method sets `intersection_point` to a vector
-        of NaN values.
+        This method performs a single validation:
+        - Whether the ray intersects within the defined boundary of the surface
+
+        If the validation fails, the method sets `intersection_point` to NaN values.
+
         Parameters
         ----------
         incident_ray : Ray
@@ -411,34 +412,84 @@ cdef class Surface(Picklable):
             Reference to an eigen::Vector3d instance where the intersection point will
             be stored. If the intersection is invalid, this will be set to
             (NaN, NaN, NaN).
+
+        Notes
+        -----
+        - This is a Cython-specific, low-level function intended for internal use.
+        - The method doesn't return a value; instead, it modifies the passed
+          `intersection_point`.
+        - Unlike intersection_cy, this method does NOT check the propagation direction,
+          allowing intersections both in front of and behind the ray origin.
+        - For normal (forward-only) ray tracing, use intersection_cy instead.
+        - This is a separate method rather than intersection_cy with a parameter due to
+          Cython limitations with default parameters in nogil contexts.
+
+          TODO: Verify why this didn't compiled with nogil.
+        """
+        # Calculate the intersection point between ray and surface
+        self._calculate_intersection(incident_ray, intersection_point)
+
+        # Validation: Check if the intersection point is inside the surface boundary
+        if not self.shape.hit_cy(intersection_point):
+            assign_nan_to_vector3d(intersection_point)
+
+    cdef inline void intersection_cy(self, Ray incident_ray,
+                                     Vector3d& intersection_point) noexcept nogil:
+        """
+        Compute the intersection point of a ray with the surface (forward propagation
+        only).
+
+        This method calculates ray-surface intersections enforcing forward propagation,
+        which is the standard behavior for normal ray tracing. It performs two
+        validations:
+        1. Whether the ray intersects within the defined boundary of the surface
+        2. Whether the intersection occurs in front of the ray origin (forward
+        direction)
+
+        If either validation fails, the method sets `intersection_point` to NaN values.
+
+        Parameters
+        ----------
+        incident_ray : Ray
+            The incident ray that intersects with the surface.
+        intersection_point : Vector3d&
+            Reference to an eigen::Vector3d instance where the intersection point will
+            be stored. If the intersection is invalid, this will be set to
+            (NaN, NaN, NaN).
+
         Notes
         -----
         - This is a Cython-specific, low-level function intended for internal use.
         - The method doesn't return a value; instead, it modifies the passed
           `intersection_point`.
         - Forward propagation is enforced by ensuring the intersection occurs in the
-          direction of the ray (positive distance).
+          direction of the ray (distance > 1.e-10 to account for numerical precision).
+        - For bidirectional ray tracing, use intersection_bidirectional_cy instead.
+        - Implementation: This method calls intersection_bidirectional_cy first, then
+          adds the forward propagation validation. Two separate methods exist instead
+          of one with a boolean parameter due to Cython limitations with default
+          parameters in nogil contexts.
         """
-        # Calculate the intersection point between ray and surface
-        self._calculate_intersection(incident_ray, intersection_point)
+        # First, compute the intersection allowing bidirectional propagation
+        self.intersection_bidirectional_cy(incident_ray, intersection_point)
 
-        # Validation 1: Check if the intersection point is inside the surface boundary
-        if not self.shape.hit_cy(intersection_point):
-            assign_nan_to_vector3d(intersection_point)
+        # If no valid intersection was found, return early
+        if isnan(intersection_point(0)) or \
+           isnan(intersection_point(1)) or \
+           isnan(intersection_point(2)):
+
             return
 
-        # Validation 2: Check if the intersection is in front of the ray
-        # (forward propagation)
-        # Calculate distance along ray direction from origin to intersection
+        # Validation: Check if the intersection occurs in front of the ray origin
         cdef double dist = (intersection_point -
                             incident_ray._origin).dot(incident_ray._direction)
 
         # If distance is negative or too small (numerical precision threshold),
-        # the intersection is invalid
+        # the intersection is behind the ray or at the origin - mark as invalid
         if dist < 1.e-10:
             assign_nan_to_vector3d(intersection_point)
 
-    def intersection(self, Ray incident_ray):
+    def intersection(self, Ray incident_ray, allow_backward=False):
         """
         Calculate the point of intersection between a ray and this surface.
 
@@ -459,6 +510,10 @@ cdef class Surface(Picklable):
         incident_ray : Ray
             The incident ray, which must be in the coordinate system of the
             surface.
+        allow_backward : bool, optional
+            If True, allows intersections both in front of and behind the ray
+            origin (bidirectional ray tracing). If False (default), only allows
+            intersections in front of the ray origin (forward propagation).
 
         Returns
         -------
@@ -466,9 +521,21 @@ cdef class Surface(Picklable):
             A tuple (x, y, z) containing the coordinates of the point of
             intersection between the ray and the surface. If there is no
             intersection, it returns (NaN, NaN, NaN).
+
+        Notes
+        -----
+        - When allow_backward=False, the method enforces forward propagation,
+          which is standard for normal ray tracing applications.
+        - When allow_backward=True, the method uses bidirectional intersection,
+          useful for applications like backward ray tracing or finding virtual
+          intersection points.
         """
         cdef Vector3d intersection_point
-        self.intersection_cy(incident_ray, intersection_point)
+        if allow_backward:
+            self.intersection_bidirectional_cy(incident_ray, intersection_point)
+        else:
+            self.intersection_cy(incident_ray, intersection_point)
+
         return convert_vector3d_to_tuple(intersection_point)
 
     @cython.boundscheck(False)
@@ -789,7 +856,7 @@ cdef class Surface(Picklable):
 
         Note: this method needs to be checked, because the incoming plane wave
         has not a constant intensity. The ray distribution is affected by the
-        surface topography. it is better to use the slow version pw_propagate1.
+        surface topography. it is better to use the slow version pw_propagate.
 
         Note: The ray comes from the negative side. Need to change this
 

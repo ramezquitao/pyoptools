@@ -73,9 +73,22 @@ cdef class Plane(Surface):
         (<double*>(&normal(1)))[0] = 0.
         (<double*>(&normal(2)))[0] = 1.
 
-    def _repr_(self):
+    def __repr__(self):
         '''Return an string with the representation of the optical plane
         '''
+        attrs = []
 
-        return "Plane(shape="+str(self.shape)+",reflectivity=" + \
-            str(self.reflectivity)+")"
+        if self.shape is not None:
+            attrs.append(f"shape={self.shape!r}")
+
+        if self.reflectivity != 0:
+            attrs.append(f"reflectivity={self.reflectivity}")
+
+        # Include other Surface attributes if they exist
+        if hasattr(self, 'coating') and self.coating is not None:
+            attrs.append(f"coating={self.coating!r}")
+
+        if hasattr(self, 'material') and self.material is not None:
+            attrs.append(f"material={self.material!r}")
+
+        return f"Plane({', '.join(attrs)})"

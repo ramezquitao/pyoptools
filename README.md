@@ -16,5 +16,3 @@ Contributions to pyOpTools are welcome! Please see our [Contributing Guidelines]
 - Running tests
 - Code style guidelines
 - Making pull requests
-
-For AI agents and detailed technical guidelines, see [`AGENTS.md`](AGENTS.md).
